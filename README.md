@@ -127,17 +127,7 @@ Subhas Chakraborty
 
 ---
 
-# 🔗 Connect With Me
 
-## GitHub
-
-(Add GitHub Link)
-
-## LinkedIn
-
-(Add LinkedIn Link)
-
----
 
 # ⭐ If You Like This Project
 

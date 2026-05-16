@@ -1,13 +1,9 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-import plotly.express as px
-import plotly.graph_objects as go
-import warnings
-
-warnings.filterwarnings("ignore")
+import shap
+import matplotlib.pyplot as plt
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(
@@ -24,224 +20,166 @@ expected_columns = joblib.load("columns.pkl")
 # ---------------- CUSTOM CSS ----------------
 st.markdown("""
 <style>
-
 .main {
-    background-color: #0E1117;
+    background-color: #f5f7fa;
 }
 
-h1, h2, h3 {
+h1 {
     text-align: center;
+    color: #ff4b4b;
+}
+
+.stButton>button {
+    width: 100%;
+    background-color: #ff4b4b;
     color: white;
+    font-size: 18px;
+    border-radius: 10px;
+    height: 3em;
 }
 
 .result-box {
-    text-align: center;
-    font-size: 28px;
-    font-weight: bold;
-    padding: 20px;
-    border-radius: 12px;
-    margin-top: 20px;
-}
-
-.probability-box {
-    background-color: #1E1E1E;
     padding: 20px;
     border-radius: 12px;
     text-align: center;
-    margin-top: 20px;
-}
-
-.metric-card {
-    background-color: #1E1E1E;
-    padding: 20px;
-    border-radius: 10px;
-    text-align: center;
-}
-
-div.stButton {
-    text-align: center;
-}
-
-div.stButton > button:first-child {
-    background-color: #ff4b4b;
-    color: white;
-    font-size: 20px;
+    font-size: 24px;
     font-weight: bold;
-    border-radius: 10px;
-    padding: 12px 30px;
-    border: none;
-    width: 300px;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- TITLE ----------------
-st.title("🩺 Breast Cancer Prediction System")
-st.markdown("### AI-Powered Medical Prediction App")
-
 # ---------------- SIDEBAR ----------------
-st.sidebar.title("📌 About Project")
-
-st.sidebar.info(
-    """
-This machine learning project predicts whether a tumor is:
-
-- Benign
-- Malignant
-
-using breast cancer diagnostic features.
-"""
-)
+st.sidebar.title("🩺 Breast Cancer Predictor")
 
 st.sidebar.markdown("---")
 
 st.sidebar.subheader("⚙️ ML Model Used")
 st.sidebar.write("Support Vector Machine (SVM)")
 
+st.sidebar.subheader("🧠 Explainable AI")
+st.sidebar.write("SHAP Explainability")
+
 st.sidebar.subheader("📊 Features Used")
-st.sidebar.write("10 Important Medical Features")
+st.sidebar.write("10 Medical Features")
 
 st.sidebar.markdown("---")
 
 st.sidebar.subheader("👨‍💻 Developed By")
-st.sidebar.write("Subhas Chakraborty")
+st.sidebar.markdown(
+    "<div style='font-size:18px; font-weight:bold;'>Subhas Chakraborty</div>",
+    unsafe_allow_html=True
+)
+
+# ---------------- TITLE ----------------
+st.title("🩺 Breast Cancer Prediction System")
+
+st.markdown(
+    "<h4 style='text-align:center;'>Predict whether the tumor is Benign or Malignant</h4>",
+    unsafe_allow_html=True
+)
+
+st.markdown("---")
 
 # ---------------- INPUT SECTION ----------------
-st.markdown("## Enter Patient Details")
-
 col1, col2 = st.columns(2)
 
 with col1:
-    radius_mean = st.slider("Radius Mean", 5.0, 30.0, 14.0)
-    texture_mean = st.slider("Texture Mean", 5.0, 40.0, 19.0)
-    perimeter_mean = st.slider("Perimeter Mean", 40.0, 200.0, 90.0)
-    area_mean = st.slider("Area Mean", 100.0, 2500.0, 600.0)
-    smoothness_mean = st.slider("Smoothness Mean", 0.05, 0.20, 0.10)
+    radius_mean = st.number_input("Radius Mean", 0.0, 50.0, 14.0)
+    texture_mean = st.number_input("Texture Mean", 0.0, 50.0, 20.0)
+    perimeter_mean = st.number_input("Perimeter Mean", 0.0, 200.0, 90.0)
+    area_mean = st.number_input("Area Mean", 0.0, 3000.0, 600.0)
+    smoothness_mean = st.number_input("Smoothness Mean", 0.0, 1.0, 0.1)
 
 with col2:
-    compactness_mean = st.slider("Compactness Mean", 0.01, 0.40, 0.10)
-    concavity_mean = st.slider("Concavity Mean", 0.00, 0.50, 0.10)
-    concave_points_mean = st.slider("Concave Points Mean", 0.00, 0.30, 0.05)
-    symmetry_mean = st.slider("Symmetry Mean", 0.10, 0.40, 0.20)
-    fractal_dimension_mean = st.slider("Fractal Dimension Mean", 0.04, 0.10, 0.06)
+    compactness_mean = st.number_input("Compactness Mean", 0.0, 1.0, 0.1)
+    concavity_mean = st.number_input("Concavity Mean", 0.0, 1.0, 0.1)
+    concave_points_mean = st.number_input("Concave Points Mean", 0.0, 1.0, 0.05)
+    symmetry_mean = st.number_input("Symmetry Mean", 0.0, 1.0, 0.2)
+    fractal_dimension_mean = st.number_input("Fractal Dimension Mean", 0.0, 1.0, 0.06)
 
-# ---------------- CREATE INPUT DATAFRAME ----------------
-input_data = {
-    'radius_mean': radius_mean,
-    'texture_mean': texture_mean,
-    'perimeter_mean': perimeter_mean,
-    'area_mean': area_mean,
-    'smoothness_mean': smoothness_mean,
-    'compactness_mean': compactness_mean,
-    'concavity_mean': concavity_mean,
-    'concave points_mean': concave_points_mean,
-    'symmetry_mean': symmetry_mean,
-    'fractal_dimension_mean': fractal_dimension_mean
-}
+# ---------------- PREDICT BUTTON ----------------
+st.markdown("<br>", unsafe_allow_html=True)
 
-input_df = pd.DataFrame([input_data])
+col_btn1, col_btn2, col_btn3 = st.columns([1,2,1])
 
-# ---------------- ENSURE COLUMN ORDER ----------------
-input_df = input_df[expected_columns]
+with col_btn2:
+    predict_button = st.button("🔍 Predict Cancer Type")
 
-# ---------------- SCALE INPUT ----------------
-input_scaled = scaler.transform(input_df)
+# ---------------- PREDICTION ----------------
+if predict_button:
 
-# ---------------- PREDICTION BUTTON ----------------
-if st.button("Predict Cancer Type"):
+    input_data = pd.DataFrame({
+        'radius_mean': [radius_mean],
+        'texture_mean': [texture_mean],
+        'perimeter_mean': [perimeter_mean],
+        'area_mean': [area_mean],
+        'smoothness_mean': [smoothness_mean],
+        'compactness_mean': [compactness_mean],
+        'concavity_mean': [concavity_mean],
+        'concave points_mean': [concave_points_mean],
+        'symmetry_mean': [symmetry_mean],
+        'fractal_dimension_mean': [fractal_dimension_mean]
+    })
 
-    prediction = model.predict(input_scaled)
-    probability = model.predict_proba(input_scaled)
+    # Add missing columns
+    for col in expected_columns:
+        if col not in input_data.columns:
+            input_data[col] = 0
+
+    input_data = input_data[expected_columns]
+
+    # Scale
+    input_scaled = scaler.transform(input_data)
+
+    # Prediction
+    prediction = model.predict(input_scaled)[0]
+    probability = model.predict_proba(input_scaled)[0]
 
     st.markdown("---")
 
-    # ---------------- RESULT ----------------
-    st.markdown("# Prediction Result")
-
-    if prediction[0] == 1:
+    # RESULT
+    if prediction == 1:
         st.markdown(
-            '<div class="result-box" style="background-color:#4B0000;color:white;">⚠️ Malignant Tumor Detected</div>',
+            "<div class='result-box' style='background-color:#ffcccc; color:#b30000;'>⚠️ Malignant Tumor Detected</div>",
             unsafe_allow_html=True
         )
     else:
         st.markdown(
-            '<div class="result-box" style="background-color:#014421;color:white;">✅ Benign Tumor Detected</div>',
+            "<div class='result-box' style='background-color:#ccffcc; color:#006600;'>✅ Benign Tumor Detected</div>",
             unsafe_allow_html=True
         )
 
-    # ---------------- METRICS ----------------
-    st.markdown("# Prediction Probability")
-
-    col3, col4 = st.columns(2)
-
-    with col3:
-        st.metric(
-            label="Benign Probability",
-            value=f"{probability[0][0]*100:.2f}%"
-        )
-
-    with col4:
-        st.metric(
-            label="Malignant Probability",
-            value=f"{probability[0][1]*100:.2f}%"
-        )
-
-    # ---------------- CHARTS ----------------
-    st.markdown("# 📊 Visual Analysis")
-
     # Probability Chart
+    st.subheader("📊 Prediction Probability")
+
     prob_df = pd.DataFrame({
-        'Cancer Type': ['Benign', 'Malignant'],
-        'Probability': [
-            probability[0][0]*100,
-            probability[0][1]*100
-        ]
+        "Class": ["Benign", "Malignant"],
+        "Probability": probability
     })
 
-    fig_bar = px.bar(
-        prob_df,
-        x='Cancer Type',
-        y='Probability',
-        text='Probability',
-        title='Prediction Probability Analysis'
+    st.bar_chart(prob_df.set_index("Class"))
+
+    # ---------------- SHAP EXPLAINABILITY ----------------
+    st.subheader("🧠 Explainable AI with SHAP")
+
+    explainer = shap.KernelExplainer(
+        model.predict_proba,
+        input_scaled
     )
 
-    st.plotly_chart(fig_bar, use_container_width=True)
+    shap_values = explainer.shap_values(input_scaled)
 
-    # Radar Chart
-    categories = list(input_data.keys())
-    values = list(input_data.values())
+    st.write("Feature Impact on Prediction")
 
-    fig_radar = go.Figure()
+    fig, ax = plt.subplots()
 
-    fig_radar.add_trace(go.Scatterpolar(
-        r=values,
-        theta=categories,
-        fill='toself',
-        name='Patient Data'
-    ))
-
-    fig_radar.update_layout(
-        polar=dict(
-            radialaxis=dict(
-                visible=True
-            )
-        ),
-        showlegend=True,
-        title='Patient Feature Radar Chart'
+    shap.summary_plot(
+        shap_values,
+        input_scaled,
+        feature_names=expected_columns,
+        show=False
     )
 
-    st.plotly_chart(fig_radar, use_container_width=True)
+    st.pyplot(fig)
 
-    # Feature Table
-    st.markdown("# 📋 Patient Input Summary")
-
-    st.dataframe(input_df)
-
-# ---------------- FOOTER ----------------
-st.markdown("---")
-st.markdown(
-    "<h4 style='text-align:center;'>Made with ❤️ using Streamlit & Machine Learning</h4>",
-    unsafe_allow_html=True
-)
+    st.success("Prediction Completed Successfully ✅")
