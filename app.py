@@ -159,27 +159,29 @@ if predict_button:
 
     st.bar_chart(prob_df.set_index("Class"))
 
-    # ---------------- SHAP EXPLAINABILITY ----------------
+   # =========================
+# SHAP Explainability
+# =========================
+
     st.subheader("🧠 Explainable AI with SHAP")
 
-    explainer = shap.KernelExplainer(
-        model.predict_proba,
-        input_scaled
-    )
+    # Create SHAP Explainer
+    explainer = shap.Explainer(model.predict, input_scaled)
 
-    shap_values = explainer.shap_values(input_scaled)
+    # Generate SHAP values
+    shap_values = explainer(input_scaled)
 
-    st.write("Feature Impact on Prediction")
+    # Create Figure
+    fig, ax = plt.subplots(figsize=(10, 4))
 
-    fig, ax = plt.subplots()
-
-    shap.summary_plot(
-        shap_values,
-        input_scaled,
-        feature_names=expected_columns,
+    # Waterfall Plot
+    shap.plots.waterfall(
+        shap_values[0],
+        max_display=10,
         show=False
     )
 
+    # Show Plot in Streamlit
     st.pyplot(fig)
 
     st.success("Prediction Completed Successfully ✅")
