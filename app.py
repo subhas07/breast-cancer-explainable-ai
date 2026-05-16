@@ -5,19 +5,19 @@ import joblib
 import shap
 import matplotlib.pyplot as plt
 
-# ---------------- PAGE CONFIG ----------------
+#PAGE CONFIG 
 st.set_page_config(
     page_title="Breast Cancer Prediction",
     page_icon="🩺",
     layout="wide"
 )
 
-# ---------------- LOAD MODEL ----------------
+# LOAD 
 model = joblib.load("model.pkl")
 scaler = joblib.load("scaler.pkl")
 expected_columns = joblib.load("columns.pkl")
 
-# ---------------- CUSTOM CSS ----------------
+#CSS 
 st.markdown("""
 <style>
 .main {
@@ -48,39 +48,32 @@ h1 {
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- SIDEBAR ----------------
+#SIDEBAR
 st.sidebar.title("🩺 Breast Cancer Predictor")
-
 st.sidebar.markdown("---")
-
 st.sidebar.subheader("⚙️ ML Model Used")
 st.sidebar.write("Support Vector Machine (SVM)")
-
 st.sidebar.subheader("🧠 Explainable AI")
 st.sidebar.write("SHAP Explainability")
-
 st.sidebar.subheader("📊 Features Used")
 st.sidebar.write("10 Medical Features")
-
 st.sidebar.markdown("---")
-
 st.sidebar.subheader("👨‍💻 Developed By")
 st.sidebar.markdown(
     "<div style='font-size:18px; font-weight:bold;'>Subhas Chakraborty</div>",
     unsafe_allow_html=True
 )
 
-# ---------------- TITLE ----------------
+# TITLE 
 st.title("🩺 Breast Cancer Prediction System")
 
 st.markdown(
     "<h4 style='text-align:center;'>Predict whether the tumor is Benign or Malignant</h4>",
     unsafe_allow_html=True
 )
-
 st.markdown("---")
 
-# ---------------- INPUT SECTION ----------------
+# INPUT SECTION 
 col1, col2 = st.columns(2)
 
 with col1:
@@ -97,7 +90,7 @@ with col2:
     symmetry_mean = st.number_input("Symmetry Mean", 0.0, 1.0, 0.2)
     fractal_dimension_mean = st.number_input("Fractal Dimension Mean", 0.0, 1.0, 0.06)
 
-# ---------------- PREDICT BUTTON ----------------
+# PREDICT BUTTON 
 st.markdown("<br>", unsafe_allow_html=True)
 
 col_btn1, col_btn2, col_btn3 = st.columns([1,2,1])
@@ -105,7 +98,7 @@ col_btn1, col_btn2, col_btn3 = st.columns([1,2,1])
 with col_btn2:
     predict_button = st.button("🔍 Predict Cancer Type")
 
-# ---------------- PREDICTION ----------------
+# PREDICTION 
 if predict_button:
 
     input_data = pd.DataFrame({
@@ -159,29 +152,33 @@ if predict_button:
 
     st.bar_chart(prob_df.set_index("Class"))
 
-   # =========================
+   
+    # =========================
 # SHAP Explainability
 # =========================
 
     st.subheader("🧠 Explainable AI with SHAP")
 
     # Create SHAP Explainer
-    explainer = shap.Explainer(model.predict, input_scaled)
+    explainer = shap.KernelExplainer(
+        model.predict_proba,
+        input_scaled
+    )
 
-    # Generate SHAP values
-    shap_values = explainer(input_scaled)
+    # Calculate SHAP values
+    shap_values = explainer.shap_values(input_scaled)
 
-    # Create Figure
-    fig, ax = plt.subplots(figsize=(10, 4))
+    # Create Plot
+    fig, ax = plt.subplots(figsize=(10,5))
 
-    # Waterfall Plot
-    shap.plots.waterfall(
-        shap_values[0],
-        max_display=10,
+    shap.summary_plot(
+        shap_values[1],
+        input_scaled,
+        feature_names=expected_columns,
+        plot_type="bar",
         show=False
     )
 
-    # Show Plot in Streamlit
     st.pyplot(fig)
 
     st.success("Prediction Completed Successfully ✅")
