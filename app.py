@@ -5,21 +5,28 @@ import joblib
 import shap
 import matplotlib.pyplot as plt
 
-#PAGE CONFIG 
+# =========================
+# PAGE CONFIG
+# =========================
 st.set_page_config(
     page_title="Breast Cancer Prediction",
     page_icon="🩺",
     layout="wide"
 )
 
-# LOAD 
+# =========================
+# LOAD MODELS
+# =========================
 model = joblib.load("model.pkl")
 scaler = joblib.load("scaler.pkl")
 expected_columns = joblib.load("columns.pkl")
 
-#CSS 
+# =========================
+# CUSTOM CSS
+# =========================
 st.markdown("""
 <style>
+
 .main {
     background-color: #f5f7fa;
 }
@@ -29,13 +36,14 @@ h1 {
     color: #ff4b4b;
 }
 
-.stButton>button {
+.stButton > button {
     width: 100%;
     background-color: #ff4b4b;
     color: white;
     font-size: 18px;
     border-radius: 10px;
     height: 3em;
+    border: none;
 }
 
 .result-box {
@@ -45,62 +53,141 @@ h1 {
     font-size: 24px;
     font-weight: bold;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
-#SIDEBAR
+# =========================
+# SIDEBAR
+# =========================
 st.sidebar.title("🩺 Breast Cancer Predictor")
+
 st.sidebar.markdown("---")
+
 st.sidebar.subheader("⚙️ ML Model Used")
 st.sidebar.write("Support Vector Machine (SVM)")
+
 st.sidebar.subheader("🧠 Explainable AI")
 st.sidebar.write("SHAP Explainability")
+
 st.sidebar.subheader("📊 Features Used")
 st.sidebar.write("10 Medical Features")
+
 st.sidebar.markdown("---")
+
 st.sidebar.subheader("👨‍💻 Developed By")
 st.sidebar.markdown(
     "<div style='font-size:18px; font-weight:bold;'>Subhas Chakraborty</div>",
     unsafe_allow_html=True
 )
 
-# TITLE 
+# =========================
+# TITLE
+# =========================
 st.title("🩺 Breast Cancer Prediction System")
 
 st.markdown(
     "<h4 style='text-align:center;'>Predict whether the tumor is Benign or Malignant</h4>",
     unsafe_allow_html=True
 )
+
 st.markdown("---")
 
-# INPUT SECTION 
+# =========================
+# INPUT SECTION
+# =========================
 col1, col2 = st.columns(2)
 
 with col1:
-    radius_mean = st.number_input("Radius Mean", 0.0, 50.0, 14.0)
-    texture_mean = st.number_input("Texture Mean", 0.0, 50.0, 20.0)
-    perimeter_mean = st.number_input("Perimeter Mean", 0.0, 200.0, 90.0)
-    area_mean = st.number_input("Area Mean", 0.0, 3000.0, 600.0)
-    smoothness_mean = st.number_input("Smoothness Mean", 0.0, 1.0, 0.1)
+
+    radius_mean = st.number_input(
+        "Radius Mean",
+        0.0,
+        50.0,
+        14.0
+    )
+
+    texture_mean = st.number_input(
+        "Texture Mean",
+        0.0,
+        50.0,
+        20.0
+    )
+
+    perimeter_mean = st.number_input(
+        "Perimeter Mean",
+        0.0,
+        200.0,
+        90.0
+    )
+
+    area_mean = st.number_input(
+        "Area Mean",
+        0.0,
+        3000.0,
+        600.0
+    )
+
+    smoothness_mean = st.number_input(
+        "Smoothness Mean",
+        0.0,
+        1.0,
+        0.1
+    )
 
 with col2:
-    compactness_mean = st.number_input("Compactness Mean", 0.0, 1.0, 0.1)
-    concavity_mean = st.number_input("Concavity Mean", 0.0, 1.0, 0.1)
-    concave_points_mean = st.number_input("Concave Points Mean", 0.0, 1.0, 0.05)
-    symmetry_mean = st.number_input("Symmetry Mean", 0.0, 1.0, 0.2)
-    fractal_dimension_mean = st.number_input("Fractal Dimension Mean", 0.0, 1.0, 0.06)
 
-# PREDICT BUTTON 
-st.markdown("<br>", unsafe_allow_html=True)
+    compactness_mean = st.number_input(
+        "Compactness Mean",
+        0.0,
+        1.0,
+        0.1
+    )
 
-col_btn1, col_btn2, col_btn3 = st.columns([1,2,1])
+    concavity_mean = st.number_input(
+        "Concavity Mean",
+        0.0,
+        1.0,
+        0.1
+    )
+
+    concave_points_mean = st.number_input(
+        "Concave Points Mean",
+        0.0,
+        1.0,
+        0.05
+    )
+
+    symmetry_mean = st.number_input(
+        "Symmetry Mean",
+        0.0,
+        1.0,
+        0.2
+    )
+
+    fractal_dimension_mean = st.number_input(
+        "Fractal Dimension Mean",
+        0.0,
+        1.0,
+        0.06
+    )
+
+# =========================
+# BUTTON
+# =========================
+col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
 
 with col_btn2:
     predict_button = st.button("🔍 Predict Cancer Type")
 
-# PREDICTION 
+# =========================
+# MAIN LOGIC
+# =========================
 if predict_button:
 
+    # -------------------------
+    # INPUT DATAFRAME
+    # -------------------------
     input_data = pd.DataFrame({
         'radius_mean': [radius_mean],
         'texture_mean': [texture_mean],
@@ -114,35 +201,66 @@ if predict_button:
         'fractal_dimension_mean': [fractal_dimension_mean]
     })
 
-    # Add missing columns
+    # -------------------------
+    # ADD MISSING COLUMNS
+    # -------------------------
     for col in expected_columns:
         if col not in input_data.columns:
             input_data[col] = 0
 
+    # Reorder columns
     input_data = input_data[expected_columns]
 
-    # Scale
+    # -------------------------
+    # SCALE INPUT
+    # -------------------------
     input_scaled = scaler.transform(input_data)
 
-    # Prediction
+    # -------------------------
+    # PREDICTION
+    # -------------------------
     prediction = model.predict(input_scaled)[0]
+
     probability = model.predict_proba(input_scaled)[0]
 
     st.markdown("---")
 
-    # RESULT
+    # -------------------------
+    # RESULT DISPLAY
+    # -------------------------
     if prediction == 1:
+
         st.markdown(
-            "<div class='result-box' style='background-color:#ffcccc; color:#b30000;'>⚠️ Malignant Tumor Detected</div>",
-            unsafe_allow_html=True
-        )
-    else:
-        st.markdown(
-            "<div class='result-box' style='background-color:#ccffcc; color:#006600;'>✅ Benign Tumor Detected</div>",
+            """
+            <div class='result-box'
+            style='background-color:#ffcccc;
+            color:#b30000;'>
+
+            ⚠️ Malignant Tumor Detected
+
+            </div>
+            """,
             unsafe_allow_html=True
         )
 
-    # Probability Chart
+    else:
+
+        st.markdown(
+            """
+            <div class='result-box'
+            style='background-color:#ccffcc;
+            color:#006600;'>
+
+            ✅ Benign Tumor Detected
+
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # -------------------------
+    # PROBABILITY CHART
+    # -------------------------
     st.subheader("📊 Prediction Probability")
 
     prob_df = pd.DataFrame({
@@ -150,43 +268,46 @@ if predict_button:
         "Probability": probability
     })
 
-    st.bar_chart(prob_df.set_index("Class"))
+    st.bar_chart(
+        prob_df.set_index("Class")
+    )
 
-   
- # =========================
-# SHAP Explainability
-# =========================
-
+    # =========================
+    # SHAP EXPLAINABILITY
+    # =========================
     st.subheader("🧠 Explainable AI with SHAP")
 
-    # Create SHAP Explainer
-    explainer = shap.Explainer(model.predict, input_scaled)
+    # Background data
+    background = input_scaled
+
+    # SHAP Explainer
+    explainer = shap.Explainer(
+        model.predict_proba,
+        background
+    )
 
     # Generate SHAP values
     shap_values = explainer(input_scaled)
 
-    # Extract SHAP values safely
-    values = np.abs(shap_values.values[0])
-
-    # Create dataframe
-    shap_df = pd.DataFrame({
-        "Feature": expected_columns,
-        "Importance": values
-    })
-
-    # Sort features
-    shap_df = shap_df.sort_values(
-        by="Importance",
-        ascending=False
+    # -------------------------
+    # SHAP SUMMARY PLOT
+    # -------------------------
+    shap.summary_plot(
+        shap_values.values[:, :, 1],
+        input_data,
+        feature_names=expected_columns,
+        show=False
     )
 
-    # Show dataframe
-    st.dataframe(shap_df)
+    # Display plot
+    st.pyplot(plt.gcf())
 
-    # Bar chart
-    st.subheader("📊 Feature Importance")
+    # Clear figure
+    plt.clf()
 
-    st.bar_chart(
-        shap_df.set_index("Feature")
+    # -------------------------
+    # SUCCESS MESSAGE
+    # -------------------------
+    st.success(
+        "Prediction Completed Successfully ✅"
     )
-    st.success("Prediction Completed Successfully ✅")
