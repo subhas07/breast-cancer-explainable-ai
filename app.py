@@ -153,28 +153,36 @@ if predict_button:
     st.bar_chart(prob_df.set_index("Class"))
 
    
-   # =========================
+  # =========================
 # SHAP Explainability
 # =========================
 
     st.subheader("🧠 Explainable AI with SHAP")
 
     # Create SHAP Explainer
-    explainer = shap.Explainer(model.predict, input_scaled)
-
-    # Generate SHAP values
-    shap_values = explainer(input_scaled)
-
-    # Create Figure
-    fig, ax = plt.subplots(figsize=(10, 5))
-
-    # SHAP Bar Plot
-    shap.plots.bar(
-        shap_values[0],
-        show=False
+    explainer = shap.KernelExplainer(
+        model.predict_proba,
+        input_scaled
     )
 
-    # Display Plot
-    st.pyplot(fig)
+    # Generate SHAP values
+    shap_values = explainer.shap_values(input_scaled)
 
+    # Create DataFrame for feature importance
+    shap_df = pd.DataFrame({
+        "Feature": expected_columns,
+        "SHAP Value": np.abs(shap_values[1][0])
+    })
+
+    shap_df = shap_df.sort_values(by="SHAP Value", ascending=False)
+
+    # Show table
+    st.dataframe(shap_df)
+
+    # Bar chart
+    st.subheader("📊 Feature Importance")
+
+    st.bar_chart(
+        shap_df.set_index("Feature")
+    )
     st.success("Prediction Completed Successfully ✅")
